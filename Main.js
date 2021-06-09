@@ -8,6 +8,7 @@ function setup() {
     dropzone.dragOver(highlight);
     dropzone.dragLeave(unhighlight);
     dropzone.drop(gotFile, unhighlight);
+
 }
 
 function gotFile(file) {
@@ -16,28 +17,121 @@ function gotFile(file) {
     var img = createImg(file.data);
     img.size(100, 100);
      */
+    let color;
+    let chartType = 'scatter';
+    if(/^#[0-9A-F]{6}$/i.test(file.name.split('.').slice(0, -1).join('.'))){
+        color = file.name.split('.').slice(0, -1).join('.');
+    }
+    else{
+        color = '#000000';
+    }
 
     dropzone.remove();
     const div1 = document.getElementById("div1");
-    const btn = document.createElement("button");
-    btn.innerHTML = "Save Image";
-    div1.appendChild(btn);
-    btn.addEventListener("click", function () {
+    const div2 = document.getElementById("div2");
+
+    const saveBtn = document.createElement("button");
+    const lineBtn = document.createElement("button");
+    const barBtn = document.createElement("button");
+    const scatterBtn = document.createElement("button");
+
+    const hexInput = document.createElement('input');
+    hexInput.type = "text";
+
+    saveBtn.innerHTML = "Save Image";
+    scatterBtn.innerHTML = "Scatter Chart";
+    lineBtn.innerHTML = "Line Chart";
+    barBtn.innerHTML = "Bar Chart";
+    hexInput.value = "Hex Code";
+
+    div1.appendChild(scatterBtn);
+    div1.appendChild(lineBtn);
+    div1.appendChild(barBtn);
+
+    div2.appendChild(saveBtn);
+    div2.appendChild(hexInput);
+
+    saveBtn.addEventListener("click", function () {
         // console.log('test');
         var image = myChart.toBase64Image();
         // console.log(image);
         downloadFile(image, file.name);
-    })
+    });
+
+    lineBtn.addEventListener("click", function () {
+        myChart.destroy();
+        file.file.text().then( text => {
+            chart(text, file, color, 'line');
+        });
+        chartType = 'line';
+    });
+
+    barBtn.addEventListener("click", function () {
+        myChart.destroy();
+        file.file.text().then( text => {
+            chart(text, file, color, 'bar');
+        });
+        chartType = 'bar';
+    });
+
+    scatterBtn.addEventListener("click", function () {
+        myChart.destroy();
+        file.file.text().then( text => {
+            chart(text, file, color, 'scatter');
+        });
+        chartType = 'scatter';
+    });
+
+    hexInput.onmousedown = function (m){
+        hexInput.value = "";
+    }
+
+
+    hexInput.onkeypress = function(e){
+        if (!e) e = window.event;
+        let keyCode = e.code || e.key;
+        if (keyCode === 'Enter'){
+            // Enter pressed
+            if(hexInput.value !== "") {
+
+
+                if (/^#[0-9A-F]{6}$/i.test(hexInput.value)) {
+                    console.log("Is Hex");
+                    hexInput.style.color = hexInput.value;
+                    color = hexInput.value;
+                    myChart.destroy();
+                    file.file.text().then(text => {
+                        chart(text, file, color, chartType);
+                    });
+                } else {
+                    console.log("Not Hex");
+                    hexInput.style.color = "#fc030f";
+                }
+            }
+            else{
+                hexInput.style.color = "#000000";
+                color = "#000000";
+                file.file.text().then(text => {
+                    chart(text, file, color, chartType);
+                });
+            }
+            return false;
+        }
+        if(keyCode === 'Backspace'){
+            hexInput.style.color = "#000000";
+        }
+    }
+
 
     file.file.text().then( text => {
         // console.log(text);
-        chart(text, file, /^#[0-9A-F]{6}$/i.test(file.name.split('.').slice(0, -1).join('.')));
+        chart(text, file, color, 'scatter');
     });
     // chart(file.file)
 }
 
 function highlight() {
-    dropzone.style('background-color', '#ccc');
+    dropzone.style('background-color', '#cee5d0');
 }
 
 function unhighlight() {
@@ -49,19 +143,15 @@ const yData = [];
 let fileName;
 
 
-async function chart(text, file, isHex) {
-    var color;
-    var rgba2;
-    if(isHex){
-        color = file.name.split('.').slice(0, -1).join('.');
-    }
-    else{
-        color = '#000000';
-    }
+async function chart(text, file, color, chartType) {
+
     await getData(text, file);
     const ctx = document.getElementById('chart').getContext('2d');
     myChart = new Chart(ctx, {
-        type: 'scatter',
+        type: chartType,
+        options: {
+            responsive: true
+        },
         data: {
             labels: xData,
             datasets: [{
@@ -73,6 +163,7 @@ async function chart(text, file, isHex) {
             }]
         }
     });
+    myChart.canvas.parentNode.style.height = '128px';
 }
 
 
